@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import dict
+from typing import Dict
 import os
 import uuid
 
@@ -17,8 +17,9 @@ class AppUploadRequest(BaseModel):
 def is_app_allowed(filename: str) -> bool:
     return any(filename.lower().endswith(ext) for ext in APP_ALLOWED_EXTS)
 
-def create_app(id: str, nome: str, categoria: str, descricao: str, path: str, uploader: str) -> dict:
+def create_app(id: str, nome: str, categoria: str, descricao: str, path: str, uploader: str) -> Dict[str, str]:
     return {
         "id": id, "nome": nome, "categoria": categoria, "descricao": descricao, "arquivo": path, 
         "status": "pending", "downloads": 0, "rating": 0.0, "avaliacoes": 0, "comments": [], "uploader": uploader
     }
+
