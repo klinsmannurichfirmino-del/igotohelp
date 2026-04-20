@@ -19,6 +19,11 @@ import tempfile
 
 app = FastAPI(title="iGoToHelp SaaS", version="4.0")
 
+from .database import engine
+from .models import Base
+
+Base.metadata.create_all(bind=engine)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
