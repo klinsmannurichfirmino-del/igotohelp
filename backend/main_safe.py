@@ -55,7 +55,37 @@ async def root():
 async def health():
     return {"status": "ok", "env": "production-ready"}
 
+import time
+start_time = time.time()
+print("⏱️ Uptime iniciado")
+
 print("✅ Health checks OK")
+
+@app.get("/status")
+async def status():
+    uptime = int(time.time() - start_time)
+    db_status = "connected" if db_engine else "not-connected"
+    return {
+        "api": "online",
+        "database": db_status,
+        "uptime": uptime
+    }
+
+@app.get("/self-test")
+async def self_test():
+    tests = {}
+    try:
+        if db_engine:
+            # Test DB
+            result = engine.execute("SELECT 1")
+            tests["db"] = "ok"
+        else:
+            tests["db"] = "skipped"
+    except Exception as e:
+        tests["db"] = str(e)
+    
+    tests["files"] = os.path.exists("uploads")
+    return {"tests": tests}
 
 # IMPORT BANCO COM PROTEÇÃO
 db_engine = None
