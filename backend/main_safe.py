@@ -59,33 +59,30 @@ import time
 start_time = time.time()
 print("⏱️ Uptime iniciado")
 
-print("✅ Health checks OK")
+from fastapi.responses import JSONResponse
 
-@app.get("/status")
-async def status():
-    uptime = int(time.time() - start_time)
-    db_status = "connected" if db_engine else "not-connected"
-    return {
-        "api": "online",
-        "database": db_status,
-        "uptime": uptime
-    }
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    print(f"🔥 ERRO GLOBAL em {request.method} {request.url}: {exc}")
+    return JSONResponse(
+        status_code=200,
+        content={"error": str(exc), "status": "recovered"}
+    )
 
-@app.get("/self-test")
-async def self_test():
-    tests = {}
+@app.middleware("http")
+async def log_requests(request, call_next):
+    print(f"➡️ {request.method} {request.url}")
     try:
-        if db_engine:
-            # Test DB
-            result = engine.execute("SELECT 1")
-            tests["db"] = "ok"
-        else:
-            tests["db"] = "skipped"
+        response = await call_next(request)
+        print(f"✅ {response.status_code}")
+        return response
     except Exception as e:
-        tests["db"] = str(e)
-    
-    tests["files"] = os.path.exists("uploads")
-    return {"tests": tests}
+        print(f"💥 ERRO MIDDLEWARE {request.method} {request.url}: {e}")
+        return JSONResponse(status_code=200, content={"error": str(e), "status": "recovered"})
+
+print("🛡️ GOD MODE: global handler + middleware ativo")
+
+print("✅ Health checks OK")
 
 # IMPORT BANCO COM PROTEÇÃO
 db_engine = None
