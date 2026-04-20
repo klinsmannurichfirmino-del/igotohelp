@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iGoToHelp v3 - Hacker Terminal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Courier New', monospace; 
+            background: #0a0a0a; 
+            color: #00ff00; 
+            line-height: 1.4;
+        }
+        .container { display: flex; height: 100vh; }
+        .sidebar { 
+            width: 300px; 
+            background: #000; 
+            padding: 20px; 
+            border-right: 2px solid #00ff00; 
+            overflow-y: auto;
+        }
+        .main { flex: 1; padding: 20px; overflow-y: auto; }
+        .terminal-bar { background: #1a1a1a; padding: 10px; margin-bottom: 20px; border-radius: 4px; }
+        h1, h2 { color: #00ff88; text-shadow: 0 0 10px #00ff00; margin-bottom: 15px; }
+        input, select, textarea { 
+            width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #00aa00; 
+            background: #001100; color: #00ff00; border-radius: 2px; font-family: inherit;
+        }
+        button { 
+            background: #004400; color: #00ff00; border: 1px solid #00aa00; padding: 8px 16px; 
+            border-radius: 2px; cursor: pointer; font-family: inherit; margin: 2px;
+            transition: all 0.2s;
+        }
+        button:hover { background: #006600; box-shadow: 0 0 10px #00ff00; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .card { 
+            background: #111; padding: 15px; border: 1px solid #00aa00; border-radius: 4px; 
+            box-shadow: inset 0 0 10px #002200;
+        }
+        .card h3 { color: #00ff88; margin-bottom: 8px; }
+        .status-panel { background: #001a00; padding: 15px; margin-bottom: 20px; border: 1px solid #00ff00; }
+        .metric { display: inline-block; margin: 5px 15px 5px 0; font-weight: bold; }
+        .log-item { background: #001100; padding: 12px; margin: 8px 0; border-left: 3px solid #00ff00; font-size: 0.9em; }
+        #auth { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #000; padding: 30px; border: 2px solid #00ff00; border-radius: 4px; z-index: 1000; display: none; box-shadow: 0 0 30px #00ff00; }
+        .blink { animation: blink 1s infinite; }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.3; } }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>🔥 TERMINAL iGoToHelp</h2>
+            <div class="status-panel" id="statusPanel">
+                <h3>Status Live</h3>
+                <div id="metrics"></div>
+            </div>
+            <input type="text" id="search" placeholder="> Buscar scripts...">
+            <select id="deviceSelect">
+                <option value="">Selecionar Device</option>
+            </select>
+            <select id="categoriaFilter">
+                <option value="">Categorias</option>
+            </select>
+            <button onclick="loadScripts()">SCAN SCRIPTS</button>
+            <h3>Regras Auto</h3>
+            <input type="text" id="regraDevice" placeholder="device">
+            <input type="text" id="regraTipo" placeholder="cpu">
+            <input type="number" id="regraLimite" placeholder="80">
+            <input type="text" id="regraScript" placeholder="script_id">
+            <button onclick="createRegra()">ADD REGRA</button>
+            <h3>Agendamento</h3>
+            <input type="text" id="agScript" placeholder="script_id">
+            <input type="text" id="agDevice" placeholder="device">
+            <input type="number" id="agIntervalo" placeholder="60">
+            <button onclick="createAgendamento()">AGENDAR</button>
+            <h3>Favoritos</h3>
+            <ul id="favoritosList"></ul>
+        </div>
+        <div class="main">
+            <div class="terminal-bar blink">> [LIVE] WS Connected | Devices: <span id="devicesCount">0</span></div>
+            
+            <div id="auth">
+                <h2>ACCESS TERMINAL</h2>
+                <input type="text" id="username" placeholder="user">
+                <input type="password" id="password" placeholder="pass">
+                <button onclick="register()">REGISTER</button>
+                <button onclick="login()">LOGIN</button>
+                <p id="authMsg"></p>
+            </div>
+            
+            <section>
+                <h2>📤 Upload Script</h2>
+                <input type="text" id="nome" placeholder="Nome">
+                <input type="text" id="categoria" placeholder="Categoria">
+                <textarea id="descricao" placeholder="Descrição"></textarea>
+                <input type="file" id="fileInput">
+                <button onclick="uploadScript()">UPLOAD</button>
+            </section>
+            
+            <section>
+                <h2>⚡ Scripts Live (<span id="scriptsCount">0</span>)</h2>
+                <div class="card-grid" id="scriptsGrid"></div>
+            </section>
+            
+            <section>
+                <h2>🖥️ App Store Desktop</h2>
+                <input type="text" id="appSearch" placeholder="Buscar apps...">
+                <select id="appCategoria">
+                    <option value="">Todas categorias</option>
+                </select>
+                <button onclick="loadApps()">LOAD APPS</button>
+                <h3>🔥 Top Apps</h3>
+                <div class="card-grid" id="topAppsGrid"></div>
+                <div class="card-grid" id="appsGrid"></div>
+                
+                <div id="appDetails" class="hidden">
+                    <h3 id="appTitle"></h3>
+                    <div id="appComments"></div>
+                    <input type="text" id="commentText" placeholder="Comentar...">
+                    <button onclick="addComment()">COMENTAR</button>
+                </div>
+            </section>
+            <section>
+                <h2>🤖 Assistente IA</h2>
+                <div id="aiPanel">
+                    <button onclick="loadAiSuggestions()">Sugestões IA</button>
+                    <div id="aiSuggestions"></div>
+                    <input type="text" id="aiQuery" placeholder="Pergunte: 'limpar pc' ou 'gamer'">
+                    <button onclick="aiChat()">AI Chat</button>
+                    <div id="aiChatResp"></div>
+                </div>
+            </section>
+            <section>
+                <h2>📜 Live Logs</h2>
+                <div id="logsList"></div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8000' : `${window.location.protocol}//${window.location.host}`;
+        const WS_BASE = 'ws://127.0.0.1:8000/ws';
+        let token = localStorage.getItem('token');
+        let ws = null;
+
+        if (!token) document.getElementById('auth').style.display = 'block';
+
+        async function apiCall(path, options = {}) {
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+            const resp = await fetch(`${API_BASE}${path}`, {
+                ...options,
+                headers: { ...headers, ...options.headers }
+            });
+            if (!resp.ok) throw new Error(await resp.text());
+            return resp.json();
+        }
+
+        function connectWS() {
+            ws = new WebSocket(WS_BASE);
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'status') {
+                    updateStatusPanel(data.data);
+                }
+            };
+            ws.onopen = () => console.log('WS Connected');
+            ws.onclose = () => setTimeout(connectWS, 1000);
+        }
+
+        function updateStatusPanel(statuses) {
+            const metrics = document.getElementById('metrics');
+            let html = '';
+            for (const [device, stats] of Object.entries(statuses)) {
+                html += `
+                    <div class="metric">
+                        <strong>${device}</strong><br>
+                        CPU: ${stats.cpu?.toFixed(1)}%<br>
+                        RAM: ${stats.ram?.toFixed(1)}%<br>
+                        DISK: ${stats.disk?.toFixed(1)}%
+                    </div>
+                `;
+            }
+            metrics.innerHTML = html;
+        }
+
+        // Auth
+        async function register() {
+            try {
+                const data = await apiCall('/register', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                }) });
+                token = data.token;
+                localStorage.setItem('token', token);
+                document.getElementById('auth').style.display = 'none';
+                init();
+            } catch (e) { document.getElementById('authMsg').textContent = e.message; }
+        }
+
+        async function login() {
+            try {
+                const data = await apiCall('/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                }) });
+                token = data.token;
+                localStorage.setItem('token', token);
+                document.getElementById('auth').style.display = 'none';
+                init();
+            } catch (e) { document.getElementById('authMsg').textContent = e.message; }
+        }
+
+        async function uploadScript() {
+            const formData = new FormData();
+            formData.append('file', document.getElementById('fileInput').files[0]);
+            try {
+                await apiCall('/upload', { method: 'POST', body: formData });
+                loadScripts();
+            } catch (e) { alert('UPLOAD ERROR: ' + e.message); }
+        }
+
+        async function loadScripts() {
+            try {
+                const devices = await apiCall('/devices');
+                const deviceSelect = document.getElementById('deviceSelect');
+                deviceSelect.innerHTML = '<option value="">All Devices</option>' + Object.entries(devices).map(([id, d]) => `<option value="${id}">${d.nome}</option>`).join('');
+
+                const resp = await apiCall(`/scripts`);
+                const q = document.getElementById('search').value.toLowerCase();
+                const filtered = Object.values(resp).filter(s => !q || 
+                    s.nome.toLowerCase().includes(q) || s.descricao.toLowerCase().includes(q));
+                document.getElementById('scriptsCount').textContent = filtered.length;
+
+                const grid = document.getElementById('scriptsGrid');
+                grid.innerHTML = filtered.map(s => `
+                    <div class="card">
+                        <h3>${s.nome}</h3>
+                        <div>⭐ ${s.rating} (${s.avaliacoes}) | ⚡ ${s.execucoes} | #${s.categoria}</div>
+                        <p>${s.descricao}</p>
+                        <select id="device_${s.id}">
+                            ${deviceSelect.innerHTML}
+                        </select>
+                        <div>
+                            <button onclick="executar('${s.id}', document.getElementById('device_${s.id}').value)">EXEC</button>
+                            <button onclick="favoritar('${s.id}')">★ FAV</button>
+                            <select onchange="avaliar('${s.id}', this.value)">
+                                <option>Rate</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                            </select>
+                            <button onclick="agendar('${s.id}')">⏰</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function executar(script_id, device_id) {
+            if (!device_id) { alert('Selecione device'); return; }
+            try {
+                await apiCall(`/executar/${script_id}/${device_id}`, { method: 'POST' });
+                alert('TASK SENT!');
+            } catch (e) { alert('ERROR: ' + e.message); }
+        }
+
+        async function favoritar(id) {
+            try {
+                await apiCall(`/favoritar/${id}`, { method: 'POST' });
+            } catch (e) { alert(e.message); }
+        }
+
+        async function avaliar(id, nota) {
+            if (nota === 'Rate') return;
+            try {
+                await apiCall(`/avaliar/${id}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nota: parseInt(nota)}) });
+                loadScripts();
+            } catch (e) { alert(e.message); }
+        }
+
+        async function createRegra() {
+            try {
+                await apiCall('/regra', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+                    device: document.getElementById('regraDevice').value,
+                    tipo: document.getElementById('regraTipo').value,
+                    limite: parseFloat(document.getElementById('regraLimite').value),
+                    script_id: document.getElementById('regraScript').value
+                }) });
+                alert('REGRA ADDED!');
+            } catch (e) { alert(e.message); }
+        }
+
+        async function createAgendamento(script_id) {
+            const device = document.getElementById('deviceSelect').value;
+            const intervalo = parseInt(document.getElementById('agIntervalo').value) || 60;
+            if (!device || !script_id) { alert('Device & script needed'); return; }
+            try {
+                await apiCall('/agendar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+                    script_id, device, intervalo
+                }) });
+                alert('SCHEDULED!');
+            } catch (e) { alert(e.message); }
+        }
+
+        async function agendar(script_id) {
+            document.getElementById('agScript').value = script_id;
+            document.getElementById('agDevice').value = document.getElementById('deviceSelect').value;
+        }
+
+        async function loadLogs() {
+            try {
+                const logs = await apiCall('/logs');
+                document.getElementById('logsList').innerHTML = logs.map(log => 
+                    `<div class="log-item">
+                        [${log.timestamp}] ${log.script} | ${log.saida?.substring(0,100)}...
+                        ${log.erro ? `<span style="color: #ff4444;">ERROR</span>` : ''}
+                    </div>`
+                ).join('');
+            } catch (e) { /* ignore */ }
+        }
+
+        function init() {
+            connectWS();
+            loadScripts();
+            loadApps();
+            document.getElementById('search').addEventListener('input', loadScripts);
+            document.getElementById('appSearch').addEventListener('input', debounce(loadApps, 300));
+            setInterval(loadLogs, 2000);
+        }
+
+        async function loadAiSuggestions() {
+            const device = document.getElementById('deviceSelect').value;
+            if (!device) return alert('Selecione device');
+            const sugs = await apiCall(`/ai/sugestoes/${device}`);
+            document.getElementById('aiSuggestions').innerHTML = sugs.map(s => `
+                <div class="card">
+                    <h4>${s.title}</h4>
+                    <p>${s.description}</p>
+                    <button onclick="execAiAction('${s.id}')">${s.action.toUpperCase()}</button>
+                </div>
+            `).join('');
+        }
+
+        async function aiChat() {
+            const query = document.getElementById('aiQuery').value;
+            const resp = await apiCall('/ai/chat', {method: 'POST', body: JSON.stringify({query})});
+            document.getElementById('aiChatResp').innerHTML = `<div class="log-item">${resp.response}</div>`;
+            if (resp.intent) {
+                // Exec or suggest
+                if (resp.intent.includes('pack')) {
+                    const pack = await apiCall('/ai/pack-auto', {method: 'POST', body: JSON.stringify({query: resp.intent})});
+                    // UI pack
+                    console.log('Pack:', pack);
+                }
+            }
+        }
+
+        async function execAiAction(id) {
+            // Stub for now
+            alert(`Executing AI action: ${id}`);
+        }
+
+        async function loadApps() {
+            try {
+                const categoria = document.getElementById('appCategoria').value;
+                const resp = await apiCall(`/apps${categoria ? '?categoria=' + categoria : ''}`);
+                const q = document.getElementById('appSearch').value.toLowerCase();
+                const filtered = Object.values(resp).filter(a => !q || a.nome.toLowerCase().includes(q));
+                
+                document.getElementById('appsGrid').innerHTML = filtered.map(app => `
+                    <div class="card" onclick="showAppDetails('${app.id}')" style="cursor: pointer;">
+                        <h3>${app.nome}</h3>
+                        <div>#${app.categoria} | ⭐ ${app.rating} (${app.avaliacoes}) | ⬇ ${app.downloads} | 💬 ${app.num_comments}</div>
+                        <p>${app.descricao}</p>
+                        <button onclick="event.stopPropagation(); downloadApp('${app.id}')">⬇ DOWNLOAD</button>
+                        <button onclick="event.stopPropagation(); execApp('${app.id}')">⚡ EXEC</button>
+                    </div>
+                `).join('');
+
+                // Top
+                const top = await apiCall('/apps/top?limit=5');
+                document.getElementById('topAppsGrid').innerHTML = Object.values(top).map(app => `
+                    <div class="card">
+                        <h3>${app.nome}</h3>
+                        <div>⭐ ${app.rating} | ⬇ ${app.downloads}</div>
+                    </div>
+                `).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        async function downloadApp(id) {
+            window.open(`${API_BASE}/apps/download/${id}`);
+        }
+
+        async function execApp(id) {
+            const device = document.getElementById('deviceSelect').value;
+            if (!device) return alert('Selecione device');
+            try {
+                await apiCall(`/apps/executar/${id}?device_id=${device}`, {method: 'POST'});
+                alert('App enviado!');
+            } catch (e) { alert('Erro: ' + e.message); }
+        }
+
+        async function showAppDetails(id) {
+            const app = (await apiCall('/apps')).[id];
+            if (!app) return;
+            
+            document.getElementById('appTitle').textContent = app.nome;
+            const comments = await apiCall(`/apps/comments/${id}`);
+            document.getElementById('appComments').innerHTML = comments.map(c => 
+                `<div class="log-item">${c.user}: ${c.texto} <small>[${c.data.slice(0,10)}]</small></div>`
+            ).join('');
+            document.getElementById('appDetails').classList.remove('hidden');
+            document.getElementById('commentText').dataset.appId = id;
+        }
+
+        async function addComment() {
+            const id = document.getElementById('commentText').dataset.appId;
+            const texto = document.getElementById('commentText').value;
+            if (!texto) return;
+            try {
+                await apiCall(`/apps/comment/${id}?texto=${encodeURIComponent(texto)}`, {method: 'POST'});
+                document.getElementById('commentText').value = '';
+                showAppDetails(id);
+            } catch (e) { alert('Erro comentário'); }
+        }
+
+        if (token) init();
+    </script>
+</body>
+</html>
