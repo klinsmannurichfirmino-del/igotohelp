@@ -1,3 +1,7 @@
+from typing import Dict, List
+import os
+import uuid
+
 def get_ai_suggestions(status_data):
     suggestions = []
     if status_data.get('cpu', 0) > 80:

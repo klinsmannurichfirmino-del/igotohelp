@@ -1,10 +1,13 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Query, WebSocket, WebSocketDisconnect, Header, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from backend.services.apps import APP_UPLOAD_DIR, APP_ALLOWED_EXTS, AppUploadRequest, is_app_allowed, create_app
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from .services.apps import APP_UPLOAD_DIR, APP_ALLOWED_EXTS, AppUploadRequest, is_app_allowed, create_app
+from fastapi.security import HTTPBearer
+from fastapi import Request
 from pydantic import BaseModel
 from typing import List, Optional, Dict
+from collections import defaultdict
+
 import os
 import uuid
 import jwt
@@ -156,11 +159,10 @@ async def upload(
     scripts[file_id] = script
     return {"id": file_id, "script": script}
 
-@app.post("/apps/executar/{app_id}", dependencies=[Depends(get_current_user)])
-async def executar_app(app_id: str, current_user: str = Depends(get_current_user)):
+@app.post("/apps/executar/{app_id}")
+async def executar_app(app_id: str, device_id: str = Query(...), current_user: str = Depends(get_current_user)):
     if app_id not in apps or apps[app_id]["status"] != "approved":
         raise HTTPException(403, "App not approved")
-    device_id = request.query_params.get('device_id')
     if not device_id:
         raise HTTPException(400, "device_id required")
     tarefas.append({
@@ -184,6 +186,7 @@ async def upload_app(
     if not is_app_allowed(file.filename):
         raise HTTPException(400, "Extensão não permitida (.exe .msi .zip)")
     
+    MAX_APP_SIZE = 50 * 1024 * 1024  # 50MB
     contents = await file.read()
     if len(contents) > MAX_APP_SIZE:
         raise HTTPException(400, "Arquivo muito grande (max 50MB)")
