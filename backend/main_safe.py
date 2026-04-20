@@ -49,7 +49,13 @@ except Exception as e:
 # Health checks
 @app.get("/")
 async def root():
-    return {"status": "online"}
+    return {
+        "app": "iGoToHelp",
+        "status": "online",
+        "docs": "/docs",
+        "health": "/health",
+        "version": "1.0"
+    }
 
 @app.get("/health")
 async def health():
@@ -109,7 +115,7 @@ security = HTTPBearer()
 
 @app.get("/test")
 async def test():
-    return {"msg": "Anti-crash funcionando!"}
+    return {"msg": "API funcionando"}
 
 print("🎉 iGoToHelp API 100% anti-crash!")
 
