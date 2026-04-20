@@ -1,9 +1,8 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Query, WebSocket, WebSocketDisconnect, Header, HTTPBearer
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Query, WebSocket, WebSocketDisconnect, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from .services.apps import APP_UPLOAD_DIR, APP_ALLOWED_EXTS, AppUploadRequest, is_app_allowed, create_app
-from fastapi.security import HTTPBearer
-from fastapi import Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from collections import defaultdict
@@ -163,8 +162,6 @@ async def upload(
 async def executar_app(app_id: str, device_id: str = Query(...), current_user: str = Depends(get_current_user)):
     if app_id not in apps or apps[app_id]["status"] != "approved":
         raise HTTPException(403, "App not approved")
-    if not device_id:
-        raise HTTPException(400, "device_id required")
     tarefas.append({
         "type": "app",
         "id": app_id,
@@ -471,3 +468,4 @@ threading.Thread(target=scheduler_loop, daemon=True).start()
 async def startup_event():
     # Auto rule check in status already there
     pass
+
